@@ -4,6 +4,7 @@ import AppError from '@shared/errors/AppError';
 
 import IProductsRepository from '@modules/products/repositories/IProductsRepository';
 import ICustomersRepository from '@modules/customers/repositories/ICustomersRepository';
+
 import Order from '../infra/typeorm/entities/Order';
 import IOrdersRepository from '../repositories/IOrdersRepository';
 
@@ -20,13 +21,50 @@ interface IRequest {
 @injectable()
 class CreateOrderService {
   constructor(
+    @inject('OrdersRepository')
     private ordersRepository: IOrdersRepository,
+    @inject('ProductsRepository')
     private productsRepository: IProductsRepository,
+    @inject('CustomersRepository')
     private customersRepository: ICustomersRepository,
   ) {}
 
   public async execute({ customer_id, products }: IRequest): Promise<Order> {
-    // TODO
+    const customer = await this.customersRepository.findById(customer_id);
+    if (!customer) {
+      throw new AppError('Customer not found');
+    }
+    const productsList = await this.productsRepository.findAllById(
+      products.map(({ id }) => ({ id })),
+    );
+
+    if (productsList.length !== products.length) {
+      throw new AppError('Product in list doesnt exists');
+    }
+
+    products.forEach(({ id, quantity }) => {
+      const productListIndex = productsList.findIndex(data => data.id === id);
+      if (quantity > productsList[productListIndex].quantity) {
+        throw new AppError(
+          `Insufficient items of ${productsList[productListIndex].name}`,
+        );
+      }
+    });
+
+    await this.productsRepository.updateQuantity(products);
+
+    const addProducts = productsList.map(product => ({
+      product_id: product.id,
+      price: product.price,
+      quantity:
+        products[products.findIndex(data => data.id === product.id)].quantity,
+    }));
+
+    const order = this.ordersRepository.create({
+      customer,
+      products: addProducts,
+    });
+    return order;
   }
 }
 

@@ -15,7 +15,7 @@ export default class CreateOrders1597613508171 implements MigrationInterface {
           },
           {
             name: 'customer_id',
-            type: 'varchar',
+            type: 'uuid',
           },
           {
             name: 'created_at',
@@ -26,6 +26,16 @@ export default class CreateOrders1597613508171 implements MigrationInterface {
             name: 'updated_at',
             type: 'timestamp',
             default: 'now()',
+          },
+        ],
+        foreignKeys: [
+          {
+            name: 'ForeignKeyCustomers',
+            referencedTableName: 'customers',
+            referencedColumnNames: ['id'],
+            columnNames: ['customer_id'],
+            onDelete: 'SET NULL',
+            onUpdate: 'CASCADE',
           },
         ],
       }),
